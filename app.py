@@ -531,7 +531,7 @@ def callback():
 
 @handler.add(MessageEvent, message=(ImageMessage, VideoMessage, AudioMessage))
 def Message_Content(event):
-    print(event)
+    #print(event)  將此功能移除
     #line_bot_api.reply_message(event.reply_token,StickerSendMessage(package_id=1, sticker_id=2))
     return
 
