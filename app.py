@@ -1149,7 +1149,7 @@ def handle_message(event):
                       recipients=["hungtai.chen@gmail.com"], # replace with your email for testing
                       body=event.message.text[6:])
         mail.send(msg)
-        reply_msg.text = "感謝你的意見,已經反應給作者了."
+        reply_msg.text = "感謝你的意見,已經反應給作者了.."
         line_bot_api.reply_message(event.reply_token, reply_msg)
         return
     
