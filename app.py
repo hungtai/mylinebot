@@ -1102,7 +1102,7 @@ def handle_message(event):
         cnt, data = query_how(event.message.text[2:])
         if cnt!= 0:
             delete_how(event.message.text[2:])
-            msg = "腦袋中的這個規則,已刪除..."
+            msg = "腦袋中的這個規則,已刪除...."
         else:
             msg = "腦袋中沒有這個,不用刪"
         
