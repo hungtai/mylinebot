@@ -1153,7 +1153,7 @@ def handle_message(event):
         line_bot_api.reply_message(event.reply_token, reply_msg)
         return
     
-    if (len(event.message.text) > 1) and (event.message.text[0]=='@' or event.message.text[0]=='＠'):
+    if (len(event.message.text) > 1) and (event.message.text[0]=='s' or event.message.text[0]=='S'):
         cname=event.message.text[1:]
         b = twstock.codes
        
