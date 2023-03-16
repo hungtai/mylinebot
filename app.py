@@ -13,6 +13,7 @@ import json,time,sys
 import pandas
 import http.client
 import pytz
+
 import openai
 
 from twstock import Stock
