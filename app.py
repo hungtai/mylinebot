@@ -13,6 +13,7 @@ import json,time,sys
 import pandas
 import http.client
 import pytz
+import openai
 
 from twstock import Stock
 from twstock import BestFourPoint
@@ -55,13 +56,16 @@ line_bot_api = LineBotApi(chl_token)
 
 # Yahoo Weather Key & Secret
 client_key = os.environ['WEATHER_CLIENT_KEY']
-client_secret = os.environ['WEATHER_CLIENT_SECRET']
+client_secret = os.environ['WEATHER_CLIENT_SECRET']\
 
 # Google Cloud API
 
 #credentials_raw = os.environ['GOOGLE_APPLICATION_CREDENTIALS']
 #service_account_info = json.loads(credentials_raw)
 #credentials = service_account.Credentials.from_service_account_info(service_account_info)
+
+#OPEN AI
+openai.api_key = ['OPEN_AI_KEY']
 
 # Channel Secret
 hook_hdler = os.environ['WEBHOOK_HANDLER']
@@ -1097,7 +1101,21 @@ def handle_message(event):
         reply_msg.text = "感謝你的教導,我已經會了呦!"
         line_bot_api.reply_message(event.reply_token, reply_msg)
         return
-    
+    if event.message.text[0:2] == "ai":
+        ss=event.message.text[2:]
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            max_tokens=128,
+            temperature=0.5,
+            messages=[
+                    #{"role": "user", "content": "我叫做 hungtai"},
+                    #{"role": "assistant", "content": "原來你是 oxxo 呀"},
+                    {"role": "user", "content": ss}
+            ]
+        )
+        reply_msg = response.choices[0].message.content
+        line_bot_api.reply_message(event.reply_token, reply_msg)
+        retrun
     if event.message.text[0:2] == "t-":
         cnt, data = query_how(event.message.text[2:])
         if cnt!= 0:
