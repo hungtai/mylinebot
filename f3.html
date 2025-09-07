@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理心法航班 v8.1 - 核心心法版</title>
+    <style>
+        /* --- 基本樣式 --- */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #f0f8ff; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+        
+        /* 封面頁樣式 */
+        #cover-page {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(to bottom, #87ceeb 0%, #f0f8ff 80%);
+            text-align: center;
+            transition: opacity 0.8s ease-in-out;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+        #cover-page h1 { 
+            font-size: 3em; 
+            color: #005a9c; 
+            margin-bottom: 20px; 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        #cover-page .info { 
+            font-size: 1.2em; 
+            color: #333; 
+            margin: 8px 0; 
+        }
+        #enter-btn { 
+            margin-top: 40px; 
+            padding: 15px 35px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: white; 
+            background-color: #28a745; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: background-color 0.3s, transform 0.2s; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+        }
+        #enter-btn:hover { 
+            background-color: #218838; 
+            transform: scale(1.05); 
+        }
+
+        /* 飛行容器樣式 */
+        #flight-container { 
+            width: 90%; 
+            height: 80%; 
+            max-width: 1200px; 
+            max-height: 700px; 
+            border: 2px solid #ccc; 
+            border-radius: 15px; 
+            position: relative; 
+            overflow: hidden; 
+            background: linear-gradient(to bottom, #87ceeb 0%, #f0f8ff 80%); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            display: none; 
+            opacity: 0; 
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        /* 飛機、Canvas樣式 */
+        #airplane { 
+            font-size: 40px; 
+            position: absolute; 
+            bottom: 5%; 
+            left: -10%; 
+            z-index: 10; 
+            transition: transform 0.5s ease-in-out, opacity 0.5s; 
+        }
+        #path-canvas { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 5; 
+            pointer-events: none; 
+        }
+        
+        /* 飛行動畫 */
+        @keyframes takeoff-animation { 
+            0% { bottom: 5%; left: -10%; transform: rotate(0deg); } 
+            20% { transform: rotate(-20deg); } 
+            90% { transform: rotate(-5deg); } 
+            100% { bottom: 70%; left: 45%; transform: rotate(0deg); } 
+        }
+        @keyframes cruising-animation { 
+            0% { left: 45%; transform: translateY(0px) rotate(45deg); } 
+            50% { transform: translateY(-8px) rotate(46deg); } 
+            100% { left: 80%; transform: translateY(0px) rotate(45deg); } 
+        }
+        @keyframes landing-animation { 
+            0% { left: 80%; transform: rotate(45deg); } 
+            20% { transform: rotate(90deg); } 
+            100% { bottom: 5%; left: 120%; transform: rotate(90deg); } 
+        }
+        .takeoff { animation: takeoff-animation 6s ease-in-out forwards; }
+        .cruising { animation: cruising-animation 6s linear forwards; }
+        .landing { animation: landing-animation 6s ease-in-out forwards; }
+        
+        /* 資訊面板樣式 */
+        #info-panel { 
+            position: absolute; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 85%; 
+            padding: 20px; 
+            background-color: rgba(255, 255, 255, 0.9); 
+            border-radius: 10px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
+            opacity: 0; 
+            transition: opacity 1s; 
+            z-index: 20; 
+        }
+        #info-panel h2 { 
+            margin-top: 0; 
+            color: #005a9c; 
+        }
+        #info-panel p { 
+            font-style: italic; 
+            color: #d9534f; 
+            font-weight: bold; 
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 10px; 
+            margin-bottom: 10px; 
+        }
+        #info-panel ul { 
+            list-style: none; 
+            padding: 0; 
+        }
+        #info-panel li { 
+            margin-bottom: 8px; 
+            opacity: 0; 
+            transform: translateY(10px); 
+            transition: opacity 0.5s, transform 0.5s; 
+        }
+        
+        /* 總結面板樣式 */
+        #summary-panel { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0, 40, 80, 0.85); 
+            color: white; 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            opacity: 0; 
+            transition: opacity 1s ease-in-out; 
+            z-index: 30; 
+        }
+        #summary-panel h2 { 
+            font-size: 2.5em; 
+            margin-bottom: 30px; 
+            text-shadow: 0 0 10px rgba(255,255,255,0.5); 
+        }
+        .summary-content { 
+            display: flex; 
+            justify-content: space-around; 
+            width: 90%; 
+        }
+        .summary-column { 
+            width: 30%; 
+            padding: 0 15px; 
+        }
+        .summary-column h3 { 
+            color: #87ceeb; 
+            border-bottom: 2px solid #87ceeb; 
+            padding-bottom: 10px; 
+        }
+        .summary-column ul { 
+            list-style: none; 
+            padding: 0; 
+        }
+        .summary-column li { 
+            margin: 10px 0; 
+            font-size: 0.9em; 
+        }
+        
+        /* 核心心法頁面樣式 */
+        #core-principles-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #87ceeb 100%);
+            color: white;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            z-index: 35;
+            text-align: center;
+        }
+        
+        #core-principles-panel h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(255,255,255,0.6);
+            color: #f0f8ff;
+        }
+        
+        .core-principles-content {
+            width: 80%;
+            max-width: 100%;
+            height: 75%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+        
+        .principle-item {
+            margin: 3px 0;
+            padding: 10px 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #87ceeb;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s, transform 0.8s;
+            flex: 0 0 auto;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .principle-item h3 {
+            font-size: 1.2em;
+            color: #add8e6;
+            margin: 0 0 5px 0;
+            line-height: 1.2;
+        }
+        
+        .principle-item p {
+            font-size: 1em;
+            color: white;
+            font-weight: 500;
+            margin: 0;
+            line-height: 1.2;
+        }
+        
+        .final-message {
+            margin-top: 8px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            border: 2px solid #87ceeb;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 1s, transform 1s;
+            flex: 0 0 auto;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .final-message:hover {
+            background-color: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+        
+        .final-message h3 {
+            font-size: 1.8em;
+            color: #f0f8ff;
+            margin: 0;
+            text-shadow: 0 0 15px rgba(240, 248, 255, 0.8);
+            font-weight: bold;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        /* 時間軸面板樣式 */
+        #timeline-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #87ceeb 0%, #f0f8ff 80%);
+            color: #333;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            z-index: 40;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #timeline-panel h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #005a9c;
+            font-size: 2.5em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .timeline {
+            position: relative;
+            width: 90%;
+            height: 200px;
+            border-top: 2px solid #005a9c;
+            margin-bottom: 30px;
+        }
+
+        /* 時間點 */
+        .event {
+            position: absolute;
+            bottom: 0;
+            width: 14px;
+            height: 14px;
+            background-color: #28a745;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* 標籤 */
+        .label {
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.9em;
+            white-space: nowrap;
+            transform: translateX(-50%);
+            color: #005a9c;
+            font-weight: bold;
+        }
+
+        /* 滑鼠效果 */
+        .event:hover {
+            background-color: #d9534f;
+            transform: scale(1.5);
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+        }
+
+        /* 詳細資訊 */
+        #timeline-detail {
+            max-width: 600px;
+            width: 90%;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            display: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        #timeline-detail.show {
+            display: block;
+        }
+
+        #timeline-detail h3 {
+            color: #005a9c;
+            margin-top: 0;
+            font-size: 1.4em;
+        }
+
+        #timeline-detail p {
+            color: #333;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        /* 實例分享按鈕樣式 */
+        #example-share-btn {
+            margin-top: 30px;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #005a9c; 
+            background-color: #add8e6; 
+            border: 1px solid #005a9c;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+            z-index: 40; 
+        }
+        #example-share-btn:hover:not(:disabled) {
+            background-color: #87ceeb;
+            transform: scale(1.05);
+        }
+
+        /* Modal 彈窗樣式 */
+        #example-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 40, 80, 0.9);
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; 
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #example-modal.visible {
+            display: flex;
+            opacity: 1;
+        }
+        #example-content {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            width: 85%;
+            max-width: 960px;
+            max-height: 85vh;
+            overflow-y: auto; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            text-align: left;
+            color: #333;
+            font-family: inherit;
+        }
+        #example-content h2 {
+            text-align: center;
+            color: #87ceeb;
+            margin-top: 0;
+            font-size: 2.2em;
+            border-bottom: 2px solid #87ceeb;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .example-section {
+            margin-bottom: 30px;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        .example-section:last-child {
+            margin-bottom: 0;
+        }
+        .example-image-placeholder {
+            flex-shrink: 0;
+            width: 180px;
+            height: 150px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+            border: 2px dashed #ccc;
+            background-size: cover;
+            background-position: center;
+        }
+        .example-section#takeoff-example .example-image-placeholder { 
+            background-color: #cce5ff;
+            border-color: #b3d7ff;
+        }
+        .example-section#cruising-example .example-image-placeholder { 
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .example-section#landing-example .example-image-placeholder { 
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+
+        .example-text-content {
+            flex-grow: 1;
+        }
+        .example-text-content h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            padding-left: 10px;
+            border-left: 4px solid #28a745;
+        }
+        .example-text-content ul {
+            list-style: disc;
+            padding-left: 30px;
+        }
+        .example-text-content li {
+            margin-bottom: 12px;
+            font-size: 1.05em;
+            line-height: 1.6;
+        }
+        #close-example-modal {
+            display: block;
+            margin: 30px auto 0;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #dc3545; 
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        #close-example-modal:hover {
+            background-color: #c82333;
+            transform: scale(1.05);
+        }
+
+        /* 啟動按鈕樣式 */
+        #start-btn { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            padding: 12px 25px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            color: white; 
+            background-color: #28a745; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s; 
+            z-index: 40; 
+        }
+        #start-btn:hover:not(:disabled) { 
+            background-color: #218838; 
+            transform: scale(1.05); 
+        }
+        #start-btn:disabled { 
+            background-color: #6c757d; 
+            cursor: not-allowed; 
+            transform: scale(1); 
+        }
+        @keyframes pulse-glow { 
+            0% { box-shadow: 0 0 5px #34c759, 0 0 10px #34c759; } 
+            50% { box-shadow: 0 0 20px #34c759, 0 0 30px #34c759; } 
+            100% { box-shadow: 0 0 5px #34c759, 0 0 10px #34c759; } 
+        }
+        .waiting-for-input { animation: pulse-glow 2s infinite; }
+
+        /* 返回按鈕樣式 */
+        #back-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #dc3545;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            z-index: 50;
+        }
+        #back-btn:hover {
+            background-color: #c82333;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- 封面頁 -->
+    <div id="cover-page">
+        <h1>主管管理心得分享</h1>
+        <p class="info">報告人: 陳鴻泰</p>
+        <p class="info">報告日期: 2026/02/20</p>
+        <button id="enter-btn">進入分享會</button>
+    </div>
+
+    <!-- 飛行容器 -->
+    <div id="flight-container">
+        <canvas id="path-canvas"></canvas>
+        <div id="airplane">✈️</div>
+        <div id="info-panel">
+            <h2 id="info-title"></h2>
+            <p id="info-subtitle"></p>
+            <ul id="info-points"></ul>
+        </div>
+        <div id="summary-panel">
+            <h2>鳳凰計畫飛行總結</h2>
+            <div class="summary-content">
+                <div class="summary-column" id="summary-takeoff"></div>
+                <div class="summary-column" id="summary-cruising"></div>
+                <div class="summary-column" id="summary-landing"></div>
+            </div>
+            <button id="example-share-btn">💡 實例分享</button>
+        </div>
+        
+        <!-- 核心心法頁面 -->
+        <div id="core-principles-panel">
+            <h2>🎯 核心管理心法</h2>
+            <div class="core-principles-content">
+                <div class="principle-item" id="principle-takeoff">
+                    <h3>🛫 起飛階段</h3>
+                    <p>要明確指令</p>
+                </div>
+                <div class="principle-item" id="principle-cruising">
+                    <h3>✈️ 平穩階段</h3>
+                    <p>數據化管理</p>
+                </div>
+                <div class="principle-item" id="principle-landing">
+                    <h3>🛬 下降階段</h3>
+                    <p>多方嘗試其他可能性</p>
+                </div>
+                <div class="final-message">
+                    <h3>能為組織留下甚麼</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- 時間軸面板 -->
+        <div id="timeline-panel">
+            <h1>組織成長時間軸</h1>
+            <div class="timeline" id="timeline"></div>
+            <div id="timeline-detail"></div>
+            <button id="back-btn">🔙 返回核心心法</button>
+        </div>
+        
+        <button id="start-btn">🚀 啟動鳳凰計畫</button>
+    </div>
+
+    <!-- 實例分享的 Modal 彈窗 -->
+    <div id="example-modal">
+        <div id="example-content">
+            <h2>管理實例分享</h2>
+            
+            <!-- 起飛階段事例 -->
+            <div class="example-section" id="takeoff-example">
+                <div class="example-image-placeholder">
+                    <span>起飛階段範例圖</span> 
+                </div>
+                <div class="example-text-content">
+                    <h3>🛫 起飛階段事例: 全自製PLP CIM系統</h3>
+                    <ul>
+                        <li>(a) 市面上並無適用於可支援Wafer, Panel, QPanel, Die追蹤的封裝業MES系統</li>
+                        <li>(b) 撤棄頗貴的IBM LCDView架構,直接減少license fee約4~7千萬</li>
+                        <li>(c) 針對半導體後段各設備適用的SECS GEM規範開發特定EAP系統</li>
+                        <li>(d) 可整合原本公司的周邊系統 (異常單,機台推播,EDC-x,EDC-h,iPM...)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 穩定飛行階段事例 -->
+            <div class="example-section" id="cruising-example">
+                 <div class="example-image-placeholder">
+                    <span>飛行階段範例圖</span>
+                </div>
+                <div class="example-text-content">
+                    <h3>✈️ 穩定飛行階段事例: eCIM 內部管理系統</h3>
+                    <ul>
+                        <li>(a) 需求單系統(簽核,效益,報表)</li>
+                        <li>(b) 人員工時及工作紀錄及週會Review機制</li>
+                        <li>(c) 值班Call In,Call Out, Issue紀錄, Review系統</li>
+                        <li>(d) 系統軟硬體自我監控及通報系統</li>
+                        <li>(e) 程式管理,發行管理,影音訓練課程</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 降落階段事例 -->
+            <div class="example-section" id="landing-example">
+                 <div class="example-image-placeholder">
+                    <span>降落階段範例圖</span>
+                </div>
+                <div class="example-text-content">
+                    <h3>🛬 降落階段事例: FAB1關廠 </h3>
+                    <ul>
+                        <li>(a) 內部同仁資源整合心態調適</li>
+                        <li>(b) 外部變動不致影響系統穩定</li>
+                        <li>(c) 人員轉調及分流</li>
+                        <li>(d) 新事業確定及技術Gap補全</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <button id="close-example-modal">關閉</button>
+        </div>
+    </div>
+
+    <script>
+        console.log('Script loading...');
+        
+        // 時間軸資料
+        const timelineData = [
+            { year: "1999", remark: "1999: 進入公司" },
+            { year: "2000", remark: "2000: FAB1 自動派送功能" },
+            { year: "2002", remark: "2002: 建廠豎立MES/MCS標準" },
+            { year: "2002", remark: "2002: 豎立符合SEMI標準的AMHS" },
+            { year: "2005", remark: "2005: 完成FAB5 CIM建置" },
+            { year: "2007", remark: "2007: 豎立LCM廠3-tier架構" },
+            { year: "2010", remark: "2010: 建立AT團隊光學部門" },
+            { year: "2013", remark: "2013: 建立CIM 影像小組" },
+            { year: "2017", remark: "2017: 第一版Rule-based ADJ上線" },
+            { year: "2018", remark: "2018: 高頻EDC資料系統研製上線" },
+            { year: "2019", remark: "2019: AI ADJ 上線" },
+            { year: "2022", remark: "2022: ADB DES" },
+            { year: "2024", remark: "2024: AI ADR" }
+        ];
+
+        // DOM 元素
+        const coverPage = document.getElementById('cover-page');
+        const enterButton = document.getElementById('enter-btn');
+        const flightContainer = document.getElementById('flight-container');
+
+        console.log('Elements found:', {
+            coverPage: !!coverPage,
+            enterButton: !!enterButton,
+            flightContainer: !!flightContainer
+        });
+
+        // 封面頁切換
+        if (enterButton) {
+            enterButton.addEventListener('click', function() {
+                console.log('Enter button clicked');
+                coverPage.style.opacity = '0';
+                setTimeout(() => {
+                    coverPage.style.display = 'none';
+                    flightContainer.style.display = 'block';
+                    setTimeout(() => {
+                        flightContainer.style.opacity = '1';
+                    }, 50);
+                }, 800);
+            });
+        }
+
+        // 等待 DOM 完全載入
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded');
+            
+            // 飛行相關元素
+            const airplane = document.getElementById('airplane');
+            const startButton = document.getElementById('start-btn');
+            const infoPanel = document.getElementById('info-panel');
+            const infoTitle = document.getElementById('info-title');
+            const infoSubtitle = document.getElementById('info-subtitle');
+            const infoPoints = document.getElementById('info-points');
+            const canvas = document.getElementById('path-canvas');
+            const ctx = canvas ? canvas.getContext('2d') : null;
+            const summaryPanel = document.getElementById('summary-panel');
+            const corePrinciplesPanel = document.getElementById('core-principles-panel');
+            const timelinePanel = document.getElementById('timeline-panel');
+            const backButton = document.getElementById('back-btn');
+            
+            // 飛行資料
+            const flightData = {
+                takeoff: { 
+                    title: "🛫 起飛階段", 
+                    subtitle: "給方向、給資源、給空間，一起把飛機推上天！", 
+                    points: [
+                        "(a) 擬定清晰願景及目標 🎯", 
+                        "(b) 提供充足資源 ⛽", 
+                        "(c) 賦予團隊較大彈性 🤸", 
+                        "(d) 扮演教練及引導者 👨‍🏫", 
+                        "(e) 容忍探索中的錯誤 🙏"
+                    ] 
+                },
+                cruising: { 
+                    title: "✈️ 平穩飛行階段", 
+                    subtitle: "自動駕駛啟動！現在要看的是儀表板，不是窗外的風景。", 
+                    points: [
+                        "(a) 管理數據收集 📊", 
+                        "(b) 建立數據 KPI 📈", 
+                        "(c) 導入系統化管理 ⚙️", 
+                        "(d) 形成管理閉環 🔄"
+                    ] 
+                },
+                landing: { 
+                    title: "🛬 降落階段", 
+                    subtitle: "安全著陸是第一要務，同時也要想好飛機落地後要做什麼。", 
+                    points: [
+                        "(a) 確保系統持續穩定 🛠️", 
+                        "(b) 技術盤點及移交 📚", 
+                        "(c) 人員移轉與安排 🧑‍✈️", 
+                        "(d) 思考新事業可能 🗺️"
+                    ] 
+                }
+            };
+            
+            const ANIMATION_DURATION = 6000;
+            let flightState = 'idle';
+
+            // 更新資訊面板
+            function updateInfoPanel(phase) {
+                const data = flightData[phase];
+                infoPoints.innerHTML = '';
+                infoTitle.textContent = data.title;
+                infoSubtitle.textContent = data.subtitle;
+                infoPanel.style.opacity = '1';
+                data.points.forEach((point, index) => {
+                    setTimeout(() => {
+                        const li = document.createElement('li');
+                        li.textContent = point;
+                        infoPoints.appendChild(li);
+                        setTimeout(() => {
+                            li.style.opacity = '1';
+                            li.style.transform = 'translateY(0)';
+                        }, 50);
+                    }, index * 600);
+                });
+            }
+
+            // 繪製飛行路徑
+            function drawFlightPath() {
+                if (!ctx) return;
+                const width = flightContainer.clientWidth;
+                const height = flightContainer.clientHeight;
+                canvas.width = width; 
+                canvas.height = height;
+                ctx.clearRect(0, 0, width, height);
+                ctx.strokeStyle = '#FFFFFF'; 
+                ctx.lineWidth = 3; 
+                ctx.setLineDash([5, 10]); 
+                ctx.globalAlpha = 0.8;
+                const p1 = { x: width * -0.10, y: height * 0.95 };
+                const p2 = { x: width * 0.45, y: height * 0.30 };
+                const p3 = { x: width * 0.80, y: height * 0.30 };
+                const p4 = { x: width * 1.20, y: height * 0.95 };
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.quadraticCurveTo(width * 0.20, height * 0.95, p2.x, p2.y);
+                ctx.lineTo(p3.x, p3.y);
+                ctx.quadraticCurveTo(width * 0.80, height * 0.50, p4.x, p4.y);
+                ctx.stroke();
+            }
+
+            // 顯示總結
+            function showSummary() {
+                function populateColumn(phase) {
+                    const data = flightData[phase];
+                    const column = document.getElementById(`summary-${phase}`);
+                    let content = `<h3>${data.title}</h3><ul>`;
+                    data.points.forEach(point => { content += `<li>${point}</li>`; });
+                    content += `</ul>`;
+                    column.innerHTML = content;
+                }
+                populateColumn('takeoff'); 
+                populateColumn('cruising'); 
+                populateColumn('landing');
+                summaryPanel.style.display = 'flex';
+                setTimeout(() => { 
+                    summaryPanel.style.opacity = '1'; 
+                }, 100);
+            }
+            
+            // 顯示核心心法頁面
+            function showCorePrinciples() {
+                summaryPanel.style.opacity = '0';
+                setTimeout(() => {
+                    summaryPanel.style.display = 'none';
+                    corePrinciplesPanel.style.display = 'flex';
+                    setTimeout(() => {
+                        corePrinciplesPanel.style.opacity = '1';
+                        // 依序顯示各個心法項目
+                        setTimeout(() => {
+                            document.getElementById('principle-takeoff').style.opacity = '1';
+                            document.getElementById('principle-takeoff').style.transform = 'translateY(0)';
+                        }, 300);
+                        setTimeout(() => {
+                            document.getElementById('principle-cruising').style.opacity = '1';
+                            document.getElementById('principle-cruising').style.transform = 'translateY(0)';
+                        }, 600);
+                        setTimeout(() => {
+                            document.getElementById('principle-landing').style.opacity = '1';
+                            document.getElementById('principle-landing').style.transform = 'translateY(0)';
+                        }, 900);
+                        setTimeout(() => {
+                            document.querySelector('.final-message').style.opacity = '1';
+                            document.querySelector('.final-message').style.transform = 'scale(1)';
+                        }, 1200);
+                    }, 100);
+                }, 1000);
+                flightState = 'core_principles_displayed';
+                startButton.classList.remove('waiting-for-input');
+                startButton.textContent = '🔄 重新啟航';
+            }
+
+            // 顯示時間軸
+            function showTimeline() {
+                corePrinciplesPanel.style.opacity = '0';
+                setTimeout(() => {
+                    corePrinciplesPanel.style.display = 'none';
+                    timelinePanel.style.display = 'flex';
+                    setTimeout(() => {
+                        timelinePanel.style.opacity = '1';
+                        createTimeline();
+                    }, 100);
+                }, 1000);
+                flightState = 'timeline_displayed';
+            }
+
+            // 創建時間軸
+            function createTimeline() {
+                createVisualTimeline();
+                createTableTimeline();
+                
+                // 綁定切換按鈕事件
+                const visualViewBtn = document.getElementById('visual-view-btn');
+                const tableViewBtn = document.getElementById('table-view-btn');
+                const visualTimeline = document.getElementById('visual-timeline');
+                const tableTimeline = document.getElementById('table-timeline');
+
+                if (visualViewBtn && tableViewBtn) {
+                    visualViewBtn.addEventListener('click', () => {
+                        visualViewBtn.classList.add('active');
+                        tableViewBtn.classList.remove('active');
+                        visualTimeline.classList.add('active');
+                        tableTimeline.classList.remove('active');
+                    });
+
+                    tableViewBtn.addEventListener('click', () => {
+                        tableViewBtn.classList.add('active');
+                        visualViewBtn.classList.remove('active');
+                        tableTimeline.classList.add('active');
+                        visualTimeline.classList.remove('active');
+                    });
+                }
+            }
+
+            // 創建視覺化時間軸
+            function createVisualTimeline() {
+                const timelineEvents = document.getElementById('timeline-events');
+                const detailDiv = document.getElementById('timeline-detail');
+                
+                if (!timelineEvents) return;
+                
+                // 清空之前的內容
+                timelineEvents.innerHTML = '';
+
+                const minYear = Math.min(...timelineData.map(d => parseInt(d.year)));
+                const maxYear = Math.max(...timelineData.map(d => parseInt(d.year)));
+                const span = maxYear - minYear;
+
+                // 創建事件點
+                timelineData.forEach((item, index) => {
+                    const yearNum = parseInt(item.year);
+                    const percent = ((yearNum - minYear) / span) * 100;
+                    
+                    // 決定標籤位置（上下交替）
+                    const isTop = index % 2 === 0;
+                    
+                    // 創建事件點
+                    const eventDot = document.createElement('div');
+                    eventDot.className = 'timeline-event';
+                    eventDot.style.left = `${percent}%`;
+                    
+                    // 創建連接線
+                    const connector = document.createElement('div');
+                    connector.className = `timeline-connector ${isTop ? 'top' : 'bottom'}`;
+                    
+                    // 創建標籤
+                    const label = document.createElement('div');
+                    label.className = `timeline-label ${isTop ? 'top' : 'bottom'}`;
+                    label.style.left = `${percent}%`;
+                    label.textContent = item.year;
+                    
+                    // 事件處理
+                    const showDetail = () => {
+                        if (detailDiv) {
+                            detailDiv.innerHTML = `
+                                <div style="max-width: 600px; width: 90%; padding: 20px; background: rgba(255, 255, 255, 0.95); border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); margin: 20px auto; text-align: center;">
+                                    <h3 style="color: #005a9c; margin-top: 0; font-size: 1.4em;">${item.year}年</h3>
+                                    <p style="color: #333; font-size: 1.1em; line-height: 1.6; margin: 0;">${item.remark}</p>
+                                </div>
+                            `;
+                        }
+                        
+                        // 高亮當前事件
+                        document.querySelectorAll('.timeline-event').forEach(e => {
+                            e.style.backgroundColor = '#28a745';
+                            e.style.transform = 'translateY(-50%)';
+                        });
+                        document.querySelectorAll('.timeline-label').forEach(l => {
+                            l.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                            l.style.color = '#005a9c';
+                        });
+                        
+                        eventDot.style.backgroundColor = '#d9534f';
+                        eventDot.style.transform = 'translateY(-50%) scale(1.4)';
+                        label.style.backgroundColor = '#005a9c';
+                        label.style.color = 'white';
+                    };
+
+                    const hideDetail = () => {
+                        if (detailDiv) {
+                            detailDiv.innerHTML = '';
+                        }
+                        
+                        // 重置樣式
+                        document.querySelectorAll('.timeline-event').forEach(e => {
+                            e.style.backgroundColor = '#28a745';
+                            e.style.transform = 'translateY(-50%)';
+                        });
+                        document.querySelectorAll('.timeline-label').forEach(l => {
+                            l.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                            l.style.color = '#005a9c';
+                        });
+                    };
+
+                    eventDot.addEventListener('mouseenter', showDetail);
+                    eventDot.addEventListener('mouseleave', hideDetail);
+                    label.addEventListener('mouseenter', showDetail);
+                    label.addEventListener('mouseleave', hideDetail);
+                    
+                    // 添加到容器
+                    eventDot.appendChild(connector);
+                    timelineEvents.appendChild(eventDot);
+                    timelineEvents.appendChild(label);
+                });
+            }
+
+            // 創建表格時間軸
+            function createTableTimeline() {
+                console.log('Creating table timeline...');
+                console.log('Available timelineData:', timelineData);
+                
+                const tableBody = document.getElementById('timeline-table-body');
+                console.log('Table body element found:', !!tableBody);
+                
+                if (!tableBody) {
+                    console.error('Timeline table body not found');
+                    return;
+                }
+                
+                // 清空現有內容
+                tableBody.innerHTML = '';
+                console.log('Table body cleared');
+                
+                if (!timelineData || timelineData.length === 0) {
+                    console.error('No timeline data available for table');
+                    tableBody.innerHTML = '<tr><td colspan="2">沒有可用的時間軸資料</td></tr>';
+                    return;
+                }
+                
+                // 創建每一行
+                timelineData.forEach((item, index) => {
+                    console.log(`Creating table row ${index + 1} for:`, item);
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style="text-align: center; font-weight: bold; color: #005a9c; font-size: 1.05em; background-color: rgba(135, 206, 235, 0.1);">${item.year}</td>
+                        <td style="font-size: 0.95em; line-height: 1.5; color: #333;">${item.remark}</td>
+                    `;
+                    
+                    // 設置行樣式
+                    if (index % 2 === 0) {
+                        row.style.backgroundColor = 'rgba(248, 249, 250, 0.8)';
+                    }
+                    
+                    // 添加懸停效果
+                    row.addEventListener('mouseenter', () => {
+                        row.style.backgroundColor = 'rgba(135, 206, 235, 0.2)';
+                        row.style.transform = 'scale(1.02)';
+                        row.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                        row.style.transition = 'all 0.3s ease';
+                    });
+                    
+                    row.addEventListener('mouseleave', () => {
+                        row.style.backgroundColor = index % 2 === 0 ? 'rgba(248, 249, 250, 0.8)' : '';
+                        row.style.transform = '';
+                        row.style.boxShadow = '';
+                    });
+                    
+                    tableBody.appendChild(row);
+                    console.log(`Table row ${index + 1} added successfully`);
+                });
+                
+                console.log('Table timeline creation completed. Total rows:', tableBody.children.length);
+                
+                // 確保表格可見
+                const tableContainer = document.querySelector('.timeline-table-container');
+                if (tableContainer) {
+                    tableContainer.style.display = 'block';
+                    console.log('Table container is visible');
+                }
+            }
+            
+            // 飛行階段函數
+            function runTakeoff() {
+                flightState = 'animating';
+                startButton.disabled = true;
+                startButton.classList.remove('waiting-for-input');
+                startButton.textContent = '起飛中...';
+                updateInfoPanel('takeoff');
+                airplane.classList.add('takeoff');
+                setTimeout(() => {
+                    airplane.style.bottom = '70%'; 
+                    airplane.style.left = '45%'; 
+                    airplane.style.transform = 'rotate(0deg)';
+                    flightState = 'takeoff_complete';
+                    startButton.disabled = false;
+                    startButton.textContent = '✈️ 進入平穩飛行';
+                    startButton.classList.add('waiting-for-input');
+                }, ANIMATION_DURATION);
+            }
+
+            function runCruising() {
+                flightState = 'animating';
+                startButton.disabled = true;
+                startButton.classList.remove('waiting-for-input');
+                startButton.textContent = '平穩飛行中...';
+                updateInfoPanel('cruising');
+                airplane.classList.remove('takeoff');
+                airplane.classList.add('cruising');
+                setTimeout(() => {
+                    airplane.style.bottom = '70%'; 
+                    airplane.style.left = '80%'; 
+                    airplane.style.transform = 'rotate(45deg)';
+                    flightState = 'cruising_complete';
+                    startButton.disabled = false;
+                    startButton.textContent = '🛬 準備降落';
+                    startButton.classList.add('waiting-for-input');
+                }, ANIMATION_DURATION);
+            }
+
+            function runLanding() {
+                flightState = 'animating';
+                startButton.disabled = true;
+                startButton.classList.remove('waiting-for-input');
+                startButton.textContent = '降落中...';
+                updateInfoPanel('landing');
+                airplane.classList.remove('cruising');
+                airplane.classList.add('landing');
+                setTimeout(() => {
+                    flightState = 'landing_complete';
+                    startButton.disabled = false;
+                    startButton.textContent = '📊 查看飛行總結';
+                    startButton.classList.add('waiting-for-input');
+                }, ANIMATION_DURATION);
+            }
+
+            function showSummaryAndPath() {
+                infoPanel.style.opacity = '0';
+                airplane.style.opacity = '0';
+                drawFlightPath();
+                showSummary();
+                flightState = 'summary_displayed';
+                startButton.classList.remove('waiting-for-input');
+                startButton.textContent = '🎯 核心心法總結';
+            }
+
+            function resetFlight() {
+                flightState = 'idle';
+                // 隱藏時間軸頁面
+                timelinePanel.style.opacity = '0';
+                setTimeout(() => { 
+                    timelinePanel.style.display = 'none'; 
+                }, 1000);
+                
+                // 重置核心心法頁面
+                corePrinciplesPanel.style.opacity = '0';
+                setTimeout(() => { 
+                    corePrinciplesPanel.style.display = 'none'; 
+                    // 重置所有心法項目的狀態
+                    document.getElementById('principle-takeoff').style.opacity = '0';
+                    document.getElementById('principle-takeoff').style.transform = 'translateY(20px)';
+                    document.getElementById('principle-cruising').style.opacity = '0';
+                    document.getElementById('principle-cruising').style.transform = 'translateY(20px)';
+                    document.getElementById('principle-landing').style.opacity = '0';
+                    document.getElementById('principle-landing').style.transform = 'translateY(20px)';
+                    document.querySelector('.final-message').style.opacity = '0';
+                    document.querySelector('.final-message').style.transform = 'scale(0.9)';
+                }, 1000);
+                
+                if (ctx) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+                infoPanel.style.opacity = '0';
+                airplane.className = '';
+                airplane.style.cssText = 'opacity: 1;';
+                void airplane.offsetWidth; // Trigger reflow
+                startButton.textContent = '🚀 啟動鳳凰計畫';
+                startButton.disabled = false;
+                startButton.classList.remove('waiting-for-input');
+            }
+
+            // 主控制函數
+            function handleFlightControl() {
+                switch (flightState) {
+                    case 'idle': 
+                        runTakeoff(); 
+                        break;
+                    case 'takeoff_complete': 
+                        runCruising(); 
+                        break;
+                    case 'cruising_complete': 
+                        runLanding(); 
+                        break;
+                    case 'landing_complete': 
+                        showSummaryAndPath(); 
+                        break;
+                    case 'summary_displayed': 
+                        showCorePrinciples(); 
+                        break;
+                    case 'core_principles_displayed': 
+                        resetFlight(); 
+                        break;
+                    case 'timeline_displayed': 
+                        resetFlight(); 
+                        break;
+                }
+            }
+            
+            // 綁定事件
+            if (startButton) {
+                startButton.addEventListener('click', handleFlightControl);
+            }
+
+            // 時間軸相關事件
+            const finalMessage = document.querySelector('.final-message');
+            if (finalMessage) {
+                finalMessage.addEventListener('click', () => {
+                    showTimeline();
+                });
+            }
+
+            // 返回按鈕
+            if (backButton) {
+                backButton.addEventListener('click', () => {
+                    timelinePanel.style.opacity = '0';
+                    setTimeout(() => {
+                        timelinePanel.style.display = 'none';
+                        corePrinciplesPanel.style.display = 'flex';
+                        setTimeout(() => {
+                            corePrinciplesPanel.style.opacity = '1';
+                        }, 100);
+                        flightState = 'core_principles_displayed';
+                    }, 1000);
+                });
+            }
+
+            // 實例分享 Modal 互動邏輯
+            const exampleShareButton = document.getElementById('example-share-btn');
+            const exampleModal = document.getElementById('example-modal');
+            const closeExampleModalButton = document.getElementById('close-example-modal');
+
+            if (exampleShareButton && exampleModal && closeExampleModalButton) {
+                exampleShareButton.addEventListener('click', () => {
+                    exampleModal.style.display = 'flex';
+                    requestAnimationFrame(() => {
+                        exampleModal.style.opacity = '1';
+                    });
+                });
+
+                closeExampleModalButton.addEventListener('click', () => {
+                    exampleModal.style.opacity = '0';
+                    exampleModal.addEventListener('transitionend', function handler() {
+                        exampleModal.style.display = 'none';
+                        exampleModal.removeEventListener('transitionend', handler);
+                    }, { once: true });
+                });
+
+                // 點擊 Modal 外圍關閉
+                exampleModal.addEventListener('click', (event) => {
+                    if (event.target === exampleModal) { 
+                        closeExampleModalButton.click();
+                    }
+                });
+            }
+        });
+
+        console.log('Script loaded successfully');
+    </script>
+</body>
+</html>
