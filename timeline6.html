@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>組織成長時間軸 - 互動事件動畫</title>
+<title>能為組織留下甚麼 - 互動事件動畫</title>
 <style>
 body { 
   font-family: Arial, sans-serif; 
@@ -43,7 +43,7 @@ h1 {
 }
 .center-display { 
   position:absolute; 
-  top:35px; 
+  top:15px; 
   left:50%; 
   background: linear-gradient(45deg,#ff6b6b,#feca57); 
   color:white; 
@@ -211,6 +211,7 @@ let data=[
 {year:"2000",remark:"FAB1 自動派送功能",category:"系統建置"},
 {year:"2002",remark:"建立獨立MES/MCS標準",category:"標準建立"},
 {year:"2002",remark:"獨立符合SEMI標準的AMHS",category:"標準建立"},
+{year:"2004",remark:"獨立符合SHS",category:"標準建立"},
 {year:"2005",remark:"完成FAB5 CIM建置",category:"系統建置"},
 {year:"2007",remark:"獨立LCM建 3-tier架構",category:"架構設計"},
 {year:"2008",remark:"獨立LCM建 3-tier架構",category:"架構設計"},
@@ -273,13 +274,14 @@ function initTimeline(){
 
         const lineEl=document.createElement('div');
         lineEl.className='label-line';
-        lineEl.style.left=(percent+offset)+'%';
+        const offsetRight = 0.7;
+        lineEl.style.left=(percent+offset+offsetRight)+'%';
         lineEl.style.height='0px';
         timeline.appendChild(lineEl);
 
         const textEl=document.createElement('div');
         textEl.className='label-text';
-        textEl.style.left=(percent+offset)+'%';
+        textEl.style.left=(percent+offset+offsetRight)+'%';
         textEl.style.bottom=topPx+'px';
         textEl.textContent=item.remark;
         timeline.appendChild(textEl);
