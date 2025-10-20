@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主管管理心法分享</title>
+<style>
+    /* --- 原有 CSS --- */
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: #f0f8ff;
+        margin: 0; padding: 0;
+        display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden;
+    }
+    #cover-page {
+        width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;
+        background: linear-gradient(to bottom, #87ceeb 0%, #f0f8ff 80%);
+        text-align: center; transition: opacity 0.8s;
+        position: absolute; top: 0; left: 0; z-index: 100;
+    }
+    #cover-page h1 { font-size: 3em; color: #005a9c; margin-bottom: 20px; }
+    #cover-page .info { font-size: 1.2em; color: #333; margin: 8px 0; }
+    #enter-btn { margin-top: 40px; padding: 15px 35px; font-size: 18px; font-weight: bold; color: white; background-color: #28a745;
+        border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, transform 0.2s; }
+    #enter-btn:hover { background-color: #218838; transform: scale(1.05);}
+    #flight-container {
+        width: 90%; height: 80%; max-width: 1200px; max-height: 700px;
+        border: 2px solid #ccc; border-radius: 15px; position: relative; overflow: hidden;
+        background: linear-gradient(to bottom, #87ceeb 0%, #f0f8ff 80%); box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        display: none; opacity: 0; transition: opacity 0.8s;
+    }
+    #airplane {
+        font-size: 40px; position: absolute; bottom: 5%; left: -10%; z-index: 10;
+        transition: transform 0.5s, opacity 0.5s;
+    }
+    #path-canvas {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none;
+    }
+    @keyframes takeoff-animation {
+        0% { bottom: 5%; left: -10%; transform: rotate(0deg);}
+        20% { transform: rotate(-20deg);}
+        90% { transform: rotate(-5deg);}
+        100% { bottom: 76%; left: 45%; transform: rotate(0deg);}
+    }
+    @keyframes cruising-animation {
+        0% { left: 45%; transform: rotate(45deg);}
+        50% { transform: translateY(-8px) rotate(46deg);}
+        100% { left: 80%; transform: rotate(45deg);}
+    }
+    @keyframes landing-animation {
+        0% { left: 80%; transform: rotate(45deg);}
+        20% { transform: rotate(90deg);}
+        100% { bottom: 5%; left: 120%; transform: rotate(90deg);}
+    }
+    .takeoff { animation: takeoff-animation 6s ease-in-out forwards;}
+    .cruising { animation: cruising-animation 6s linear forwards;}
+    .landing { animation: landing-animation 6s ease-in-out forwards;}
+
+    /* --- 修改後的 #info-panel 樣式 --- */
+    #info-panel {
+        position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+        width: 85%; max-width: 1000px; /* 限制最大寬度 */
+        padding: 20px; background: rgba(255,255,255,0.9);
+        border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        opacity: 0; transition: opacity 1s; z-index: 20;
+        min-height: 350px;
+        display: flex; /* 使用 Flexbox 佈局 */
+        flex-direction: row; /* 內容橫向排列 */
+        justify-content: space-between; /* 文字區塊靠左，書籍區塊靠右 */
+        align-items: flex-start; /* 內容頂部對齊 */
+        box-sizing: border-box; /* padding 包含在寬度內 */
+    }
+    #info-panel .info-content-left {
+        flex: 1; /* 文字區塊佔據剩餘空間 */
+        max-width: 65%; /* 限制文字區塊最大寬度，確保右側有足夠空間 */
+        padding-right: 20px; /* 與右側書籍區塊的間隔 */
+        box-sizing: border-box;
+    }
+    #info-panel h2 { color: #005a9c; margin-top: 0;}
+    #info-panel p { font-style: italic; color: #d9534f; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;}
+    #info-points { list-style: none; padding: 0; width: 100%; text-align: left; } /* 讓 li 內容左對齊 */
+    #info-points li { margin: 10px 0; opacity: 0; transform: translateY(10px); transition: opacity 0.5s, transform 0.5s;}
+
+    /* --- 新增的書籍推薦區塊樣式 --- */
+    .books-recommendation-section {
+        flex-shrink: 0; /* 防止書籍區塊被壓縮 */
+        width: 30%; /* 設定書籍區塊的寬度 */
+        max-width: 300px; /* 限制書籍區塊最大寬度 */
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* 居中書籍列表 */
+        box-sizing: border-box;
+        padding-left: 20px; /* 與左側文字區塊的間隔 */
+    }
+    .books-recommendation-section h3 {
+        color: rgb(163, 20, 20);
+        font-size: 1.1em;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #87ceeb;
+        padding-bottom: 8px;
+        width: 100%; /* 標題寬度佔滿 */
+        text-align: center; /* 標題居中 */
+    }
+    .recommended-books {
+        display: flex;
+        flex-wrap: wrap; /* 允許換行 */
+        gap: 15px; /* 書籍之間的間隔 */
+        margin-top: 0; /* 移除原有的 margin-top */
+        padding-top: 0; /* 移除原有的 padding-top */
+        border-top: none; /* 移除原有的 border-top */
+        opacity: 0; /* 初始隱藏，待動畫出現 */
+        transform: translateY(10px); /* 初始位移 */
+        transition: opacity 0.8s, transform 0.8s;
+        width: 100%; /* 佔滿容器寬度 */
+        justify-content: center; /* 內容居中 */
+    }
+    .recommended-books.visible { /* 讓文字說明也一起淡入 */
+        opacity: 1;
+        transform: translateY(0);
+    }
+    .book-item {
+        display: flex;
+        flex-direction: column; /* 直向排列 */
+        align-items: center; /* 居中 */
+        width: 100px; /* 書籍區塊寬度 */
+        text-align: center;
+    }
+    .book-cover-container {
+        width: 100px; /* 書籍封面圖寬度 */
+        height: 140px; /* 書籍封面圖高度 */
+        background-color: rgba(255, 255, 255, 0.15); /* 封面區塊背景 */
+        border-radius: 6px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden; /* 確保圖片不會超出邊界 */
+        border: 1px solid rgba(255,255,255,0.1);
+        transition: transform 0.3s cubic-bezier(.2,1.8,.6,1), box-shadow 0.2s;
+        cursor: pointer; /* 提示可點擊 */
+    }
+    .book-cover-container:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    .book-cover {
+        width: 90%; /* 封面圖實際顯示比例 */
+        height: 90%;
+        object-fit: cover; /* 確保圖片填充且不變形 */
+        border-radius: 3px; /* 封面圖邊角 */
+    }
+    .book-title {
+        font-size: 0.9em;
+        color: #0e4c81; /* 白色 */
+        font-weight: bold;
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+    .book-author {
+        font-size: 0.8em;
+        color: #10043a; /* 淺灰色 */
+        font-style: italic;
+    }
+
+    /* --- 右下方實際案例按鈕 --- */
+    #show-case-btn {
+        position: fixed;
+        right: 30px;
+        bottom: 30px;
+        z-index: 120;
+        background: #ffd700;
+        color: #005a9c;
+        border-radius: 8px;
+        font-weight: bold;
+        padding: 12px 25px;
+        box-shadow: 0 3px 10px rgba(150,150,30,0.09);
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.2s;
+        opacity: 1;
+        display: none; /* 初始隱藏 */
+    }
+    #show-case-btn:hover {
+        background: #ffec76;
+        transform: scale(1.08);
+    }
+    /* --- 案例頁面美化+插圖放大 --- */
+    #case-panel {
+        background: linear-gradient(120deg, #d8ffd8 0%, #c1ffc1 100%);
+        backdrop-filter: blur(6px);
+        border: 1.5px solid rgba(255,255,255,0.3);
+        box-shadow: 0 10px 38px 10px rgba(20, 40, 49, 0.16), 0 3px 12px rgba(69, 69, 139, 0.19);
+        color: #005a9c;
+        border-radius: 18px;
+        position: absolute;
+        top: 50%; left: 50%; transform: translate(-50%,-50%);
+        width: 88%; max-width: 680px;
+        display:none; flex-direction:column; align-items:center;
+        padding: 40px 28px 25px 28px; z-index: 520;
+        animation: fadeInCase 0.9s;
+    }
+    @keyframes fadeInCase { 0%{opacity:0; transform: scale(0.92) translate(-50%,-55%);}
+                            90%{opacity:1; transform: scale(1.03) translate(-50%,-48%);}
+                           100%{opacity:1; transform: scale(1) translate(-50%,-50%);}
+    }
+    #case-panel h3, #case-panel ul { background: transparent; }
+    #case-panel .case-image-box{
+        width:200px; height:150px;
+        background:rgba(250,250,255,0.10);
+        border-radius:14px;
+        display:flex; justify-content:center; align-items:center;
+        margin-bottom:15px; overflow:hidden;
+        box-shadow:0 2px 12px rgba(50,160,235,0.14);
+        border:2.5px solid rgba(255,255,255,0.21);
+        backdrop-filter: blur(3px);
+        transition: box-shadow 0.37s;
+    }
+    #case-img {
+        width: 100%; height: 100%;
+        object-fit:cover; border-radius:13px;
+        transition: transform 0.37s cubic-bezier(.2,1.3,.48,1.29), box-shadow 0.27s, filter 0.19s;
+        cursor: zoom-in;
+    }
+    #case-img:hover, #case-img:focus {
+        transform: scale(1.6) translateY(-20px);
+        z-index: 99;
+        box-shadow: 0 16px 50px #009fd6ab, 0 2px 16px #3498db50;
+        filter: brightness(1.12) saturate(1.25);
+        outline: none;
+    }
+    #case-img:active {
+        transform: scale(1.85) translateY(-32px);
+        filter: brightness(1.19) saturate(1.33);
+    }
+    @media (hover: none) {
+      #case-img:active {
+        transform: scale(1.53) translateY(-8px);
+      }
+    }
+    @media(max-width:700px){
+        #case-panel{padding:15px 2vw 10px 2vw; width:98vw; }
+        #case-panel .case-image-box{width:98px; height:70px;}
+        #show-case-btn{right:10px; bottom:10px; font-size:15px; padding:8px 15px;}
+    }
+    #case-panel h3{margin-bottom:10px;}
+    #case-panel ul{margin:12px 0 0 0; padding-left:18px;}
+    #case-panel button{
+        margin-top:28px; background:#28a745; color:white; font-weight:bold; padding:10px 22px;
+        border:none; border-radius:8px; cursor:pointer; font-size:16px; box-shadow:0 2px 8px #87ceeb;
+    }
+    #case-panel button:hover{ background: #218838;}
+    
+    /* -----以下原有CSS---- */
+    #summary-panel {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,40,80,0.85); color: white; display: none; flex-direction: column;
+        align-items: center; justify-content: center; opacity: 0; transition: opacity 1s; z-index: 30;
+    }
+    #summary-panel h2 { font-size: 2.5em; margin-bottom: 30px;}
+    .summary-content { display: flex; justify-content: space-around; width: 90%;}
+    .summary-column { width: 30%; padding: 0 15px;}
+    .summary-column h3 { color: #87ceeb; border-bottom: 2px solid #87ceeb; padding-bottom: 10px;}
+    .summary-column ul { list-style: none; padding: 0;}
+    .summary-column li { margin: 10px 0; font-size: 0.9em;}
+    #core-principles-panel {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 55%, #87ceeb 100%);
+        color: white; display: none; flex-direction: column; align-items: center; justify-content: center;
+        opacity: 0; transition: opacity 1s; z-index: 35; text-align: center;
+        padding-top: 10px; 
+        padding-bottom: 56px;
+    }
+    .core-principles-content {
+        width: 850px; max-width: 98vw;
+        margin-top: 0; margin-bottom: 0;
+        display: flex; flex-direction: column; align-items: stretch;
+        gap: 18px;
+    }
+    .principle-item {
+        width: 100%;
+        box-sizing: border-box;
+        background: rgba(255,255,255,0.11);
+        border-radius: 8px; border-left: 3px solid #87ceeb;
+        margin: 0;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;     
+        justify-content: flex-start;
+        opacity: 0; transform: translateY(24px); transition: opacity 0.8s, transform 0.8s;
+        position: relative;
+        overflow: visible;
+        z-index: 1;
+    }
+    .principle-img,
+    .example-image-float {
+        cursor: pointer;
+        transition: transform 0.25s cubic-bezier(.2,1.8,.6,1), box-shadow 0.2s, filter 0.2s;
+        z-index: 2;
+    }
+    .principle-img {
+        margin-right: 25px; margin-left: 0; 
+        width: 48px; height: 48px; object-fit: contain;
+        border-radius: 10px; background: #eaf6fd; box-shadow: 0 2px 10px rgba(0,0,0,0.09);
+        border: 1px solid #cce2ee; display: block; flex-shrink: 0;
+    }
+    .example-image-float {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+        border: none;
+        background: transparent;
+        display: block;
+        min-width: 0;
+    }
+    .principle-img:hover,
+    .principle-img:focus,
+    .principle-img:active,
+    .example-image-float:hover,
+    .example-image-float:focus,
+    .example-image-float:active {
+        transform: scale(1.8) translateY(-10px);
+        z-index: 40;
+        box-shadow: 0 12px 36px rgba(30,60,150,0.24), 0 2px 16px #87ceeb;
+        filter: brightness(1.09) saturate(1.28);
+        outline: none;
+    }
+    .principle-img:active,
+    .example-image-float:active {
+        transform: scale(2.0) translateY(-16px);
+        filter: brightness(1.14) saturate(1.42);
+    }
+    .principle-img:focus,
+    .example-image-float:focus {
+        outline: 2.5px solid #87ceeb;
+    }
+    .principle-text-content {
+        display: flex; flex-direction: column; justify-content: center;
+        align-items: flex-start;    
+        min-width: 0;
+    }
+    .principle-text-content h3 {
+        margin: 0 0 9px 0;
+        font-size: 1.15em;
+        font-weight: bold;
+    }
+    .principle-text-content p {
+        font-size: 1em; color: white; font-weight: 500;
+        margin: 0; text-align: left;
+    }
+    .final-message {
+        min-height: 48px; 
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        min-width: 180px; max-width: 100%; box-sizing: border-box;
+        padding: 13px 18px;
+        background: rgba(255,255,255,0.16);
+        border-radius: 10px; border: 2px solid #87ceeb;
+        opacity: 0; transform: scale(0.92); transition: opacity 1s, transform 1s;
+    }
+    .final-message:hover { background: rgba(255,255,255,0.27); transform: scale(1.04);}
+    .final-message h3 { font-size: 1.4em; color: #f0f8ff; margin: 0; }
+    @media (max-width: 700px) {
+        .core-principles-content { width: 99vw; gap: 10px; }
+        .principle-item { flex-direction: column; align-items: center; justify-content: center; padding: 8px 4px; }
+        .principle-img { margin: 0 0 8px 0; width: 36px; height: 36px; }
+        .final-message { min-width: 130px; }
+    }
+    #example-share-btn {
+        margin-top: 30px; padding: 12px 25px; font-size: 16px; font-weight: bold; color: #005a9c; background: #add8e6;
+        border: 1px solid #005a9c; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, transform 0.2s;
+    }
+    #example-share-btn:hover:not(:disabled) { background: #87ceeb; transform: scale(1.05);}
+    #example-modal {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,40,80,0.9);
+        display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.5s;
+    }
+    #example-modal.visible { display: flex; opacity: 1;}
+    #example-content {
+        background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; width: 85%; max-width: 960px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.4); color: #333;
+    }
+    #example-content h2 { text-align: center; color: #87ceeb; margin-top: 0; font-size: 2.2em; border-bottom: 2px solid #87ceeb; padding-bottom: 15px; margin-bottom: 25px;}
+    .example-section { margin-bottom: 30px; display: flex; align-items: flex-start; gap: 20px;}
+    .example-image-placeholder {
+        flex-shrink: 0;
+        width: 180px; height: 150px;
+        background: #e0e0e0; border-radius: 10px;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 0.9em; color: #666; text-align: center;
+        border: 2px dashed #ccc;
+        overflow: hidden;
+    }
+    .example-section#takeoff-example .example-image-placeholder { background: #cce5ff; border-color: #b3d7ff;}
+    .example-section#cruising-example .example-image-placeholder { background: #d4edda; border-color: #c3e6cb;}
+    .example-section#landing-example .example-image-placeholder { background: #fff3cd; border-color: #ffeeba;}
+    .example-image-placeholder {
+        position: relative;
+        overflow: visible;
+        z-index: 10;
+    }
+    .example-image-float {
+        width: 100%;
+        height: 100%;
+        transition: transform 0.37s cubic-bezier(.2,1.3,.48,1.29), box-shadow 0.27s, filter 0.19s;
+        cursor: zoom-in;
+    }
+    .example-image-float:hover, .example-image-float:focus {
+        transform: scale(1.6) translateY(-20px);
+        z-index: 99;
+        box-shadow: 0 16px 50px #009fd6ab, 0 2px 16px #3498db50;
+        filter: brightness(1.12) saturate(1.25);
+        outline: none;
+    }
+    .example-image-float:active {
+        transform: scale(1.85) translateY(-32px);
+        filter: brightness(1.19) saturate(1.33);
+    }
+    @media (hover: none) {
+      .example-image-float:active {
+        transform: scale(1.53) translateY(-8px);
+      }
+    }
+    .example-text-content { flex-grow: 1;}
+    .example-text-content h3 { color: #28a745; margin-bottom: 15px; font-size: 1.4em; padding-left: 10px; border-left: 4px solid #28a745;}
+    .example-text-content ul { list-style: disc; padding-left: 30px;}
+    .example-text-content li { margin-bottom: 12px; font-size: 1.05em; line-height: 1.6;}
+    #close-example-modal {
+        display: block; margin: 30px auto 0; padding: 12px 25px; font-size: 16px; font-weight: bold; color: white;
+        background: #dc3545; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, transform 0.2s;
+    }
+    #close-example-modal:hover { background: #c82333; transform: scale(1.05);}
+    #start-btn {
+        position: absolute; top: 20px; left: 20px; padding: 12px 25px; font-size: 16px; font-weight: bold; color: white;
+        background: #28a745; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s; z-index: 40;
+    }
+    #start-btn:hover:not(:disabled) { background: #218838; transform: scale(1.05);}
+    #start-btn:disabled { background: #6c757d; cursor: not-allowed;}
+    @keyframes pulse-glow { 0% { box-shadow: 0 0 5px #34c759,0 0 10px #34c759;} 50%{ box-shadow: 0 0 20px #34c759,0 0 30px #34c759;} 100%{ box-shadow: 0 0 5px #34c759,0 0 10px #34c759;} }
+    .waiting-for-input { animation: pulse-glow 2s infinite;}
+</style>
+</head>
+<body>
+<!-- 封面頁 -->
+<div id="cover-page">
+    <h1>主管管理心得分享</h1>
+    <p class="info">報告人: 陳鴻泰</p>
+    <p class="info">報告日期: 2026/02/20</p>
+    <button id="enter-btn">進入分享會</button>
+</div>
+<div id="flight-container">
+    <button id="start-btn" class="waiting-for-input" style="display:none;">🚀 啟動鳳凰計畫</button>
+    <canvas id="path-canvas"></canvas>
+    <div id="airplane">
+        <img src="bird.gif" alt="airplane animation" width="90" height="90">
+    </div>
+    
+    <!-- 資訊面板 (包含左右兩區塊) -->
+    <div id="info-panel">
+        <div class="info-content-left">
+            <h2 id="info-title"></h2>
+            <p id="info-subtitle"></p>
+            <ul id="info-points"></ul>
+        </div>
+        <div class="books-recommendation-section">
+            <!-- 書籍推薦區塊將由 JS 動態插入 -->
+            <h3 id="books-recommendation-title"></h3>
+            <div id="books-container"></div> <!-- 用來放置書籍列表 -->
+        </div>
+    </div>
+
+    <!-- 右下方實際案例按鈕 -->
+    <button id="show-case-btn">🔍 實際案例</button>
+    <!-- 案例玻璃面板 -->
+    <div id="case-panel">
+        <div class="case-image-box"><img src="" id="case-img" alt="案例圖片"></div>
+        <h3 id="case-title"></h3>
+        <ul id="case-points"></ul>
+        <button id="close-case-btn">返回</button>
+    </div>
+    <!-- Summary、心法面板（原本內容） -->
+    <div id="summary-panel">
+        <h2>鳳凰飛行計畫總結</h2>
+        <div class="summary-content">
+            <div class="summary-column" id="summary-takeoff"></div>
+            <div class="summary-column" id="summary-cruising"></div>
+            <div class="summary-column" id="summary-landing"></div>
+        </div>
+        <button id="example-share-btn">💡 實例分享</button>
+    </div>
+    <!-- 核心心法面板 -->
+    <div id="core-principles-panel">
+        <div class="core-principles-content">
+            <div class="principle-item" id="principle-takeoff">
+                <img src="climb.png" alt="起飛階段插圖" class="principle-img" tabindex="0" />
+                <div class="principle-text-content">
+                    <h3>🛫 開創期 : 熱情+方向 &rarr; 勇氣</h3>
+                    <p>身先士卒, 以終為始, 明確指令, 包容錯誤</p>
+                </div>
+            </div>
+            <div class="principle-item" id="principle-cruising">
+                <img src="rule.png" alt="平穩階段插圖" class="principle-img" tabindex="0" />
+                <div class="principle-text-content">
+                    <h3>✈️ 維運期: 制度+效率 &rarr; 紀律</h3>
+                    <p>數據管理, 建立制度, 關注異常, 培育人才</p>
+                </div>
+            </div>
+            <div class="principle-item" id="principle-landing">
+                <img src="transform.png" alt="下降階段插圖" class="principle-img" tabindex="0" />
+                <div class="principle-text-content">
+                    <h3>🛬 轉型期: 共識+變革 &rarr; 願景</h3>
+                    <p>心態調適, 提早對應, 多方嘗試, 不屈不撓</p>
+                </div>
+            </div>
+            <div class="final-message">
+                <h3>能為組織留下甚麼</h3>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 實例分享的 Modal 彈窗 (原本內容) -->
+<div id="example-modal">
+    <div id="example-content">
+        <h2>管理實例分享</h2>
+        <div class="example-section" id="takeoff-example">
+            <div class="example-image-placeholder">
+                <img src="pic-a.png" alt="起飛階段範例圖" class="example-image-float" tabindex="0">
+            </div>
+            <div class="example-text-content">
+                <h3>🛫 起飛階段事例: 協助創建AT團隊轄下光學部門</h3>
+                <ul>
+                    <li> 公司成立AT團隊, 協助建立自動化所需光學團隊</li>
+                    <li> 草創階段,身先士卒, 將士用命, 擬定機台對位系統及Rule-based的AOI檢測發展重心</li>
+                    <li> 成功於南京模組廠上線OCA貼合系統, 上海MOD ACF壓痕檢測系統, 台南MOD全自動P-line</li>
+                    <li> 開發影像類專用:*對位函式庫, *AOI缺陷辨識系統, *API面板判定系統</li>
+                    <li> 衍生成立CIM AI小組, 專注影像類AI 發展 (ADJ, ADR, HOP)</li>
+                </ul>
+            </div>
+        </div>
+        <div class="example-section" id="cruising-example">
+            <div class="example-image-placeholder">
+                <img src="pic-b.png" alt="飛行階段範例圖" class="example-image-float" tabindex="0">
+            </div>
+            <div class="example-text-content">
+                <h3>✈️ 穩定飛行階段事例: <a href="http://tnecim.cminl.oa/" target="_blank">eCIM 內部管理系統</a></h3>
+                <ul>
+                    <li> 需求單系統(簽核,效益,報表)</li>
+                    <li> 人員工時及工作紀錄及週會Review機制</li>
+                    <li> 值班Call In,Call Out, Issue紀錄, Review系統</li>
+                    <li> 系統軟硬體自我監控及通報系統</li>
+                    <li> 程式管理,發行管理,影音訓練課程</li>
+                </ul>
+            </div>
+        </div>
+        <div class="example-section" id="landing-example">
+            <div class="example-image-placeholder">
+                <img src="pic-c.png" alt="降落階段範例圖" class="example-image-float" tabindex="0">
+            </div>
+            <div class="example-text-content">
+                <h3>🛬 降落階段事例: FAB1,2關廠->PLP全自製CIM系統 </h3>
+                <ul>
+                    <li> 市面上並無適用於可支援Wafer, Panel, QPanel, Die追蹤的封裝及測試業MES系統</li>
+                    <li> 撤棄頗貴的IBM LCDView架構,直接減少license 費用約4~7千萬</li>
+                    <li> 針對半導體後段各設備適用的SECS GEM規範開發特定EAP系統</li>
+                    <li> 可整合原本公司的周邊系統 (異常單,機台推播,EDC-x,EDC-h,iPM...)</li>
+                </ul>
+            </div>
+        </div>
+        <button id="close-example-modal">關閉</button>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // --- 基本宣告 ---
+    const coverPage = document.getElementById('cover-page');
+    const enterButton = document.getElementById('enter-btn');
+    const flightContainer = document.getElementById('flight-container');
+    const startBtn = document.getElementById('start-btn');
+    const airplane = document.getElementById('airplane');
+    const infoPanel = document.getElementById('info-panel');
+    const infoTitle = document.getElementById('info-title');
+    const infoSubtitle = document.getElementById('info-subtitle');
+    const infoPoints = document.getElementById('info-points');
+    const booksRecommendationTitle = document.getElementById('books-recommendation-title'); // 新增的標題元素
+    const booksContainer = document.getElementById('books-container'); // 新增的容器元素
+    const showCaseBtn = document.getElementById('show-case-btn');
+    const casePanel = document.getElementById('case-panel');
+    const caseImg = document.getElementById('case-img');
+    const caseTitle = document.getElementById('case-title');
+    const casePoints = document.getElementById('case-points');
+    const closeCaseBtn = document.getElementById('close-case-btn');
+    const canvas = document.getElementById('path-canvas');
+    const ctx = canvas.getContext('2d');
+    const summaryPanel = document.getElementById('summary-panel');
+    const corePrinciplesPanel = document.getElementById('core-principles-panel');
+    // 實例分享 Modal
+    const exampleShareBtn = document.getElementById('example-share-btn');
+    const exampleModal = document.getElementById('example-modal');
+    const closeExampleModalBtn = document.getElementById('close-example-modal');
+
+    // --- 飛行階段資料 ---
+    // !!! 請在這裡修改或替換您的書籍圖片檔名、書名和作者 !!!
+    const flightData = {
+        takeoff: {
+            title: "🛫 起飛階段 (開創期): 敢衝 {方向+熱情}",
+            subtitle: "給方向、給資源、給空間，一起把飛機推上天！",
+            points: [
+                "(a) 擬定清晰願景及目標, 以終為始 🎯",
+                "(b) 身先士卒, 領導團隊 👨‍🏫",
+                "(c) 提供充足資源 ⛽",
+                "(d) 賦予團隊較大彈性 🤸",
+                "(e) 快速反應, 精準決策 🙏"
+            ],
+            caseId: "takeoff-example",
+            books: [ // <<< 起飛階段推薦書籍
+                {
+                    cover: "book1-1.jpg", // 請替換成您的圖片檔名
+                    title: "《從0到1》",
+                    author: "彼得•蒂爾"
+                },
+                {
+                    cover: "book1-2.jpg", // 請替換成您的圖片檔名
+                    title: "《精實創業》",
+                    author: "埃里克·萊斯"
+                }
+            ]
+        },
+        cruising: {
+            title: "✈️ 平穩飛行階段 (維運期): 會穩 {制度+效率}",
+            subtitle: "自動駕駛啟動！現在要看的是儀表板，不是窗外的風景。",
+            points: [
+                "(a) 管理數據收集 📊",
+                "(b) 建立數據 KPI 📈",
+                "(c) 導入系統化管理 ⚙️",
+                "(d) 形成管理閉環 🔄"
+            ],
+            caseId: "cruising-example",
+            books: [ // <<< 平穩飛行階段推薦書籍
+                {
+                    cover: "book2-1.jpg",
+                    title: "《執行OKR帶出強團隊》",
+                    author: "保羅．尼文"
+                },
+                {
+                    cover: "book2-2.jpg",
+                    title: "《從A到A+,Good to Great》",
+                    author: "柯林斯"
+                }
+            ]
+        },
+        landing: {
+            title: "🛬 降落階段 (轉型期): 能變 {共識+變革}",
+            subtitle: "安全著陸是第一要務，同時也要想好飛機落地後要做什麼。",
+            points: [
+                "(a) 調整心態, 凝聚共識 🛠️",
+                "(b) 技術盤點, 找尋機會 📚",
+                "(c) 團隊提升, 組織再造 🧑‍✈️",
+                "(d) 擬定計畫, 穩定前行 🗺️"
+            ],
+            caseId: "landing-example",
+            books: [ // <<< 降落階段推薦書籍
+                {
+                    cover: "book3-1.jpg",
+                    title: "《領導人的變革法則》",
+                    author: "科恩"
+                },
+                {
+                    cover: "book3-2.jpg",
+                    title: "《原來你才是絆腳石》",
+                    author: "Jutta & John"
+                }
+            ]
+        }
+    };
+
+    let flightState = 'idle'; // 'idle', 'animating', 'takeoff_complete', 'cruising_complete', 'landing_complete', 'summary_displayed', 'core_principles_displayed'
+    const ANIMATION_DURATION = 6000;
+    let currentPhaseForCase = null; // 記錄目前顯示的階段，方便案例按鈕使用
+
+    // --- 函數定義 ---
+
+    // 繪製飛行路徑
+    function drawFlightPath() {
+        const width = flightContainer.clientWidth;
+        const height = flightContainer.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 10]);
+        ctx.globalAlpha = 0.8;
+        const p1 = { x: width * -0.10, y: height * 0.95 }; // 起點 (左下方外)
+        const p2 = { x: width * 0.45, y: height * 0.3 }; // 爬升到最高點
+        const p3 = { x: width * 0.80, y: height * 0.3 }; // 高點轉折
+        const p4 = { x: width * 1.20, y: height * 0.95 }; // 終點 (右下方外)
+
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.quadraticCurveTo(width * 0.20, height * 0.95, p2.x, p2.y); // 繪製起飛曲線
+        ctx.lineTo(p3.x, p3.y); // 繪製平穩飛行線段
+        ctx.quadraticCurveTo(width * 0.80, height * 0.50, p4.x, p4.y); // 繪製降落曲線
+        ctx.stroke();
+    }
+
+    // 更新資訊面板內容，包含書籍區塊
+    function updateInfoPanel(phase) {
+        const data = flightData[phase];
+        infoTitle.textContent = data.title;
+        infoSubtitle.textContent = data.subtitle;
+        infoPoints.innerHTML = ''; // 清空舊的重點
+        
+        // 清空舊的書籍區塊 (標題和列表)
+        booksRecommendationTitle.textContent = '';
+        booksContainer.innerHTML = '';
+        const existingBooksContainer = infoPanel.querySelector('.recommended-books');
+        if (existingBooksContainer) {
+            existingBooksContainer.remove();
+        }
+
+        infoPanel.style.opacity = '1'; // 確保面板可見
+        showCaseBtn.style.display = 'none'; // 暫時隱藏案例按鈕，待資訊載入完再顯示
+        
+        let finishedPointsCount = 0; // 計算已顯示的重點數量
+
+        // 動態載入重點條列
+        data.points.forEach((point, idx) => {
+            setTimeout(() => {
+                const li = document.createElement('li');
+                li.innerHTML = point; // 使用 innerHTML 允許 HTML 標籤 (如 emoji)
+                infoPoints.appendChild(li);
+                // 淡入動畫
+                setTimeout(() => {
+                    li.style.opacity = '1';
+                    li.style.transform = 'translateY(0)';
+                    finishedPointsCount++;
+                    // 當所有重點都顯示完畢後，處理書籍區塊
+                    if (finishedPointsCount === data.points.length) {
+                        if (data.books && data.books.length > 0) {
+                            renderBooks(data.books); // 渲染書籍
+                        } else {
+                            // 如果沒有書籍，也應該確保後續邏輯 (顯示案例按鈕) 能被觸發
+                            showCaseBtn.style.display = 'inline-block';
+                            showCaseBtn.style.opacity = '1';
+                        }
+                    }
+                }, 50); // 每個 li 的淡入動畫延遲
+            }, idx * 500); // 每個 li 出現之間的動畫延遲
+        });
+        
+        currentPhaseForCase = phase; // 更新當前階段，供案例按鈕調用
+    }
+
+    // 渲染書籍推薦區塊
+    function renderBooks(booksData) {
+        // 設置書籍推薦標題
+        booksRecommendationTitle.textContent = '📚 推薦閱讀';
+        
+        const booksListWrapper = document.createElement('div');
+        booksListWrapper.className = 'recommended-books';
+
+        booksData.forEach(book => {
+            const bookItem = document.createElement('div');
+            bookItem.className = 'book-item';
+
+            const coverContainer = document.createElement('div');
+            coverContainer.className = 'book-cover-container';
+            // 可以為封面圖添加點擊事件，例如放大顯示
+            coverContainer.onclick = function() {
+                console.log(`Clicked on book: ${book.title}`);
+                // 在這裡可以實現圖片放大、彈窗顯示更多資訊等功能
+                // 例如: alert(`你點擊了：《${book.title}》by ${book.author}`);
+            };
+
+            const coverImg = document.createElement('img');
+            coverImg.src = book.cover;
+            coverImg.alt = `《${book.title}》封面`;
+            coverImg.className = 'book-cover';
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'book-title';
+            titleEl.textContent = book.title;
+
+            const authorEl = document.createElement('div');
+            authorEl.className = 'book-author';
+            authorEl.textContent = book.author;
+
+            coverContainer.appendChild(coverImg);
+            bookItem.appendChild(coverContainer);
+            bookItem.appendChild(titleEl);
+            bookItem.appendChild(authorEl);
+            booksListWrapper.appendChild(bookItem);
+        });
+
+        booksContainer.appendChild(booksListWrapper); // 將書籍列表添加到容器中
+
+        // 使用 setTimeout 來觸發淡入動畫
+        setTimeout(() => {
+            booksListWrapper.classList.add('visible');
+            // 當書籍區塊出現後，再顯示案例按鈕
+            showCaseBtn.style.display = 'inline-block';
+            showCaseBtn.style.opacity = '1';
+        }, 100); // 給予 DOM 更新和 CSS 載入的時間
+    }
+
+    // 顯示總結面板
+    function showSummary() {
+        // 填充 summary-panel 內容
+        function populateSummaryCol(phase) {
+            const d = flightData[phase];
+            let htmlContent = `<h3>${d.title}</h3><ul>`;
+            d.points.forEach(pt => { htmlContent += `<li>${pt}</li>`; });
+            htmlContent += '</ul>';
+            document.getElementById(`summary-${phase}`).innerHTML = htmlContent;
+        }
+        populateSummaryCol('takeoff');
+        populateSummaryCol('cruising');
+        populateSummaryCol('landing');
+
+        // 淡出飛行中的元素，顯示總結面板
+        infoPanel.style.opacity='0';
+        airplane.style.opacity='0';
+        
+        setTimeout(() => {
+            summaryPanel.style.display = 'flex';
+            corePrinciplesPanel.style.opacity = '0'; // 確保核心心法面板是隱藏的
+            setTimeout(() => { summaryPanel.style.opacity = '1'; }, 100);
+            startBtn.textContent = '🎯 核心心法總結'; // 更新按鈕文字
+            startBtn.classList.add('waiting-for-input'); // 恢復閃爍效果
+            startBtn.disabled = false; // 啟用按鈕
+        }, 500); // 給飛行動畫淡出時間
+        
+        flightState='summary_displayed';
+        showCaseBtn.style.display = 'none'; // 總結時隱藏案例按鈕
+    }
+
+    // 顯示核心心法面板
+    function showCorePrinciples() {
+        // 淡出總結面板，顯示核心心法面板
+        summaryPanel.style.opacity = '0';
+        setTimeout(() => {
+            summaryPanel.style.display = 'none';
+            corePrinciplesPanel.style.display = 'flex';
+            corePrinciplesPanel.style.opacity = '1';
+            
+            // 為每個心法項目添加淡入動畫
+            const principles = document.querySelectorAll('.principle-item');
+            principles.forEach((item, index) => {
+                setTimeout(() => {
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateY(0)';
+                }, index * 300 + 300); // 每個項目延遲不同
+            });
+            // 最終訊息的淡入
+            const finalMessage = document.querySelector('.final-message');
+            setTimeout(() => {
+                finalMessage.style.opacity = '1';
+                finalMessage.style.transform = 'scale(1)';
+            }, principles.length * 300 + 300 + 300); // 在最後一個項目之後再延遲一點
+        }, 1000); // 給總結面板淡出時間
+        
+        flightState = 'core_principles_displayed';
+        startBtn.textContent = '🔄 重新啟航'; // 更新按鈕文字
+        startBtn.classList.remove('waiting-for-input'); // 移除閃爍效果
+        startBtn.disabled = false; // 啟用按鈕
+        showCaseBtn.style.display = 'none'; // 核心心法階段隱藏案例按鈕
+    }
+
+    // 重置飛行狀態
+    function resetFlight() {
+        flightState = 'idle';
+        
+        // 淡出核心心法面板
+        corePrinciplesPanel.style.opacity = '0';
+        // 清空各個心法項目的動畫狀態
+        const principles = document.querySelectorAll('.principle-item');
+        principles.forEach(item => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(24px)';
+        });
+        const finalMessage = document.querySelector('.final-message');
+        finalMessage.style.opacity = '0';
+        finalMessage.style.transform = 'scale(0.92)';
+        
+        setTimeout(() => {
+            corePrinciplesPanel.style.display = 'none';
+            summaryPanel.style.display = 'none'; // 確保總結面板也是隱藏的
+        }, 1000); // 等待淡出動畫完成
+
+        // 清空 Canvas
+        if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
+        
+        // 重置資訊面板和飛機
+        infoPanel.style.opacity='0';
+        airplane.className = ''; // 移除所有動畫類
+        airplane.style.cssText = 'opacity: 1;'; // 確保飛機重新顯示
+        void airplane.offsetWidth; // 強制重繪，確保動畫能重新播放
+        
+        // 重置按鈕
+        startBtn.textContent = '🚀 啟動鳳凰計畫';
+        startBtn.disabled = false;
+        startBtn.classList.add('waiting-for-input'); // 恢復閃爍效果
+        
+        // 重置案例面板和按鈕
+        casePanel.style.display='none';
+        casePanel.style.opacity='0';
+        showCaseBtn.style.display='none';
+        showCaseBtn.style.opacity='0';
+        currentPhaseForCase = null; // 清空當前階段
+    }
+
+    // 執行起飛動畫
+    function runTakeoff() {
+        flightState = 'animating';
+        startBtn.disabled = true;
+        startBtn.classList.remove('waiting-for-input');
+        startBtn.textContent = '起飛中...';
+        
+        updateInfoPanel('takeoff'); // 更新資訊面板
+        airplane.classList.add('takeoff'); // 添加起飛動畫
+        
+        setTimeout(() => {
+            // 動畫結束後的狀態重置
+            airplane.style.bottom = '80%'; airplane.style.left = '45%'; airplane.style.transform = 'rotate(0deg)';
+            flightState = 'takeoff_complete';
+            startBtn.disabled = false;
+            startBtn.textContent = '✈️ 進入平穩飛行';
+            startBtn.classList.add('waiting-for-input'); // 啟用閃爍
+        }, ANIMATION_DURATION);
+    }
+
+    // 執行平穩飛行動畫
+    function runCruising() {
+        flightState = 'animating';
+        startBtn.disabled = true;
+        startBtn.classList.remove('waiting-for-input');
+        startBtn.textContent = '平穩飛行中...';
+        
+        updateInfoPanel('cruising'); // 更新資訊面板
+        airplane.classList.remove('takeoff'); // 移除舊動畫
+        airplane.classList.add('cruising'); // 添加平穩飛行動畫
+        
+        setTimeout(() => {
+            // 動畫結束後的狀態重置
+            airplane.style.bottom = '80%'; airplane.style.left = '80%'; airplane.style.transform = 'rotate(45deg)';
+            flightState = 'cruising_complete';
+            startBtn.disabled = false;
+            startBtn.textContent = '🛬 準備降落';
+            startBtn.classList.add('waiting-for-input'); // 啟用閃爍
+        }, ANIMATION_DURATION);
+    }
+
+    // 執行降落動畫
+    function runLanding() {
+        flightState = 'animating';
+        startBtn.disabled = true;
+        startBtn.classList.remove('waiting-for-input');
+        startBtn.textContent = '降落中...';
+        
+        updateInfoPanel('landing'); // 更新資訊面板
+        airplane.classList.remove('cruising'); // 移除舊動畫
+        airplane.classList.add('landing'); // 添加降落動畫
+        
+        setTimeout(() => {
+            // 動畫結束後的狀態重置
+            // 降落後飛機可能完全移出畫面，所以這裡不需要設置具體位置，只更新狀態
+            flightState = 'landing_complete';
+            startBtn.disabled = false;
+            startBtn.textContent = '📊 查看飛行總結';
+            startBtn.classList.add('waiting-for-input'); // 啟用閃爍
+        }, ANIMATION_DURATION);
+    }
+
+    // 顯示總結面板並繪製路徑
+    function showSummaryAndPath() {
+        // 淡出資訊面板和飛機
+        infoPanel.style.opacity='0';
+        airplane.style.opacity='0';
+        
+        drawFlightPath(); // 繪製飛行路徑
+        
+        setTimeout(() => {
+            showSummary(); // 顯示總結面板
+        }, 500); // 給予淡出時間
+        
+        flightState='summary_displayed';
+    }
+
+    // --- 主要流程控制 ---
+    function handleFlightControl() {
+        switch(flightState){
+            case 'idle':
+                runTakeoff();
+                break;
+            case 'takeoff_complete':
+                runCruising();
+                break;
+            case 'cruising_complete':
+                runLanding();
+                break;
+            case 'landing_complete':
+                showSummaryAndPath();
+                break;
+            case 'summary_displayed':
+                showCorePrinciples();
+                break;
+            case 'core_principles_displayed':
+                resetFlight(); // 點擊後重置回初始狀態
+                break;
+        }
+    }
+
+    // --- 事件監聽 ---
+    
+    // 進入分享會按鈕
+    enterButton.addEventListener('click', function () {
+        coverPage.style.opacity = "0";
+        setTimeout(() => {
+            coverPage.style.display = "none";
+            flightContainer.style.display = "block";
+            setTimeout(() => {
+                flightContainer.style.opacity = "1";
+                startBtn.style.display = "block"; // 顯示啟動按鈕
+                drawFlightPath(); // 首次載入時繪製路徑
+            }, 50);
+        }, 800); // 與 coverPage 淡出動畫時間匹配
+    });
+
+    // 啟動/控制按鈕
+    startBtn.addEventListener('click', handleFlightControl);
+
+    // 實際案例按鈕
+    showCaseBtn.addEventListener('click', function(){
+        if (!currentPhaseForCase) return; // 如果沒有階段，則不執行
+        const caseData = getCaseContentByPhase(currentPhaseForCase); // 獲取對應階段的案例內容
+        
+        // 填充案例面板內容
+        caseImg.src = caseData.img || ''; // 預設為空字串
+        caseTitle.innerHTML = caseData.title || '無標題';
+        casePoints.innerHTML = '';
+        if (caseData.points && caseData.points.length > 0) {
+            caseData.points.forEach(pt => {
+                const li = document.createElement('li');
+                li.innerHTML = pt; // 使用 innerHTML 允許 HTML 標籤
+                casePoints.appendChild(li);
+            });
+        } else {
+            casePoints.innerHTML = '<li>暫無詳細說明。</li>';
+        }
+        
+        // 顯示案例面板
+        casePanel.style.display = 'flex';
+        setTimeout(()=>{ casePanel.style.opacity='1'; }, 30); // 淡入動畫
+        
+        // 讓資訊面板稍微變暗，突出案例面板
+        infoPanel.style.opacity='0.6';
+        showCaseBtn.style.opacity='0.8'; // 稍微降低按鈕透明度
+    });
+
+    // 關閉案例面板按鈕
+    closeCaseBtn.addEventListener('click', function(){
+        casePanel.style.opacity='0'; // 淡出動畫
+        setTimeout(()=>{
+            casePanel.style.display='none';
+            // 恢復資訊面板和按鈕的透明度
+            infoPanel.style.opacity='1';
+            showCaseBtn.style.opacity='1'; 
+        }, 290); // 與 CSS 淡出動畫時間匹配
+    });
+
+    // 實例分享 Modal 按鈕
+    exampleShareBtn.addEventListener('click', () => {
+        exampleModal.style.display = 'flex';
+        requestAnimationFrame(()=>{ exampleModal.style.opacity='1'; }); // 淡入動畫
+    });
+
+    // 關閉 Modal 按鈕
+    closeExampleModalBtn.addEventListener('click', () => {
+        exampleModal.style.opacity = '0';
+        // 在過渡結束後隱藏 Modal
+        exampleModal.addEventListener('transitionend', function handler(){
+            exampleModal.style.display='none';
+            exampleModal.removeEventListener('transitionend', handler);
+        }, {once:true});
+    });
+    
+    // 點擊 Modal 背景關閉 Modal
+    exampleModal.addEventListener('click', function(event){
+        if (event.target === exampleModal) { // 檢查是否點擊了背景區域
+            closeExampleModalBtn.click(); // 觸發關閉按鈕的點擊事件
+        }
+    });
+
+    // 最終訊息點擊事件 (跳轉到 timeline.html)
+    document.querySelector('.final-message').addEventListener('click', function(){
+        window.open('timeline.html', '_blank'); // 在新分頁打開
+    });
+
+    // --- 輔助函數 ---
+
+    // 根據階段獲取案例內容 (用於 #show-case-btn)
+    function getCaseContentByPhase(phase) {
+        const sectionId = flightData[phase].caseId; // 從 flightData 獲取對應案例區塊 ID
+        const section = document.getElementById(sectionId); // 獲取 DOM 元素
+        if (!section) return { img: '', title: '找不到案例內容', points: [] }; // 如果找不到元素，返回預設值
+
+        const imgEl = section.querySelector('img');
+        const titleEl = section.querySelector('.example-text-content h3');
+        const pointEls = section.querySelectorAll('.example-text-content ul li');
+        
+        return {
+            img: imgEl ? imgEl.src : '', // 圖片來源
+            title: titleEl ? titleEl.innerHTML : '無標題', // 案例標題
+            points: Array.from(pointEls).map(li => li.innerHTML) // 案例條列
+        };
+    }
+
+    // --- 初始化 ---
+    
+    // 視窗大小改變時重繪飛行路徑
+    window.addEventListener('resize', () => {
+        if (flightContainer.style.display !== 'none' && flightContainer.style.opacity !== '0') {
+            drawFlightPath();
+        }
+    });
+
+});
+</script>
+</body>
+</html>
